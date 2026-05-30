@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>内容改写助手</title>
+<style>
+  :root{
+    --bg:#f4f1ea; --paper:#fffdf8; --ink:#2b2722; --muted:#8a8175;
+    --line:#e4ddcf; --accent:#b4502e; --accent-soft:#e9d3c6; --ok:#3f7d4e;
+    --shadow:0 1px 2px rgba(43,39,34,.04),0 8px 24px rgba(43,39,34,.06);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:840px; margin:0 auto; padding:32px 20px 80px}
+  header{margin-bottom:24px}
+  h1{
+    font-family:Georgia,"Songti SC",serif; font-size:28px; font-weight:600;
+    margin:0 0 6px; letter-spacing:.5px;
+  }
+  .sub{color:var(--muted); font-size:14px; margin:0}
+  .notice{
+    margin-top:14px; font-size:13px; color:#8a6a3a;
+    background:#fbf3e3; border:1px solid #ecdcc0; border-radius:10px;
+    padding:9px 13px;
+  }
+  .card{
+    background:var(--paper); border:1px solid var(--line); border-radius:14px;
+    padding:18px; margin-bottom:16px; box-shadow:var(--shadow);
+  }
+  label{font-size:13px; color:var(--muted); display:block; margin-bottom:6px; font-weight:500}
+  .keyrow{display:flex; gap:8px; align-items:center}
+  input[type=password],input[type=text]{
+    flex:1; padding:10px 12px; border:1px solid var(--line); border-radius:9px;
+    background:#fff; font-size:14px; color:var(--ink); font-family:inherit;
+  }
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--accent-soft); border-color:var(--accent)}
+  .tiny{font-size:12px; color:var(--muted); margin-top:6px}
+  textarea{
+    width:100%; min-height:200px; padding:14px; border:1px solid var(--line);
+    border-radius:10px; background:#fff; font-size:15px; line-height:1.7;
+    resize:vertical; font-family:inherit; color:var(--ink);
+  }
+  @media(max-width:640px){
+    textarea{ min-height:160px; font-size:16px; } /* 移动端防止缩放 */
+    .btnrow{ gap:8px; }
+    .primary{ padding:12px 18px; width:100%; } /* 移动端按钮更大 */
+  }
+  .controls{display:flex; flex-wrap:wrap; gap:12px; margin-top:14px}
+  .field{flex:1; min-width:140px}
+  select{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:9px;
+    background:#fff; font-size:14px; font-family:inherit; color:var(--ink); cursor:pointer;
+  }
+  .btnrow{display:flex; gap:10px; align-items:center; margin-top:16px; flex-wrap:wrap}
+  button{font-family:inherit; cursor:pointer; border:none; border-radius:9px; font-size:14px}
+  .primary{
+    background:var(--accent); color:#fff; padding:11px 22px; font-weight:600;
+    box-shadow:0 2px 6px rgba(180,80,46,.25); transition:transform .08s,opacity .2s;
+  }
+  .primary:hover{opacity:.92}
+  .primary:active{transform:translateY(1px)}
+  .primary:disabled{opacity:.5; cursor:not-allowed}
+  .ghost{background:transparent; color:var(--muted); padding:11px 14px; border:1px solid var(--line)}
+  .ghost:hover{color:var(--ink); border-color:var(--muted)}
+  .status{font-size:13px; color:var(--accent); min-height:18px}
+  .status.done{color:var(--ok)}
+  .status.err{color:#c0392b}
+  .out{
+    white-space:pre-wrap; font-size:15px; line-height:1.8; min-height:60px;
+    word-break:break-word;
+  }
+  .out:empty::before{content:"改写结果会出现在这里…"; color:var(--muted)}
+  .outhead{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px}
+  .count{font-size:12px; color:var(--muted)}
+  .copy{background:#fff; border:1px solid var(--line); color:var(--ink); padding:6px 12px}
+  .copy:hover{border-color:var(--accent); color:var(--accent)}
+  .cursor::after{content:"▍"; color:var(--accent); animation:blink 1s step-end infinite}
+  @keyframes blink{50%{opacity:0}}
+  footer{text-align:center; color:var(--muted); font-size:12px; margin-top:30px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>内容改写助手</h1>
+    <p class="sub">把你自己的草稿，重写、润色、适配到不同平台。</p>
+    <div class="notice">
+      ⚠️ 本工具用于改写<strong>你自己原创的内容</strong>（多平台适配 / 润色 / 换风格）。
+      请勿用于改写他人作品或规避原创检测——那既侵权也有封号风险，后果自负。
+    </div>
+  </header>
+
+  <!-- API Key -->
+  <div class="card">
+    <label>你的 DeepSeek API Key</label>
+    <div class="keyrow">
+      <input id="key" type="password" placeholder="sk-..." autocomplete="off">
+      <button class="ghost" id="toggleKey" type="button">显示</button>
+    </div>
+    <div class="tiny">🔒 只保存在你自己浏览器里（localStorage）。改写时会发到本站后端用于转发，<strong>后端不会保存你的 Key</strong>。没有 Key？去 <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">platform.deepseek.com</a> 注册申请（充值几块钱就能用很久）。</div>
+  </div>
+
+  <!-- Input -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <label style="margin:0;">原稿（粘贴你自己的草稿）</label>
+      <span class="count" id="srcCount"></span>
+    </div>
+    <textarea id="src" placeholder="把你要改写的内容粘贴到这里…"></textarea>
+    <div class="controls">
+      <div class="field">
+        <label>目标平台</label>
+        <select id="platform">
+          <option value="公众号">公众号</option>
+          <option value="小红书">小红书</option>
+          <option value="知乎">知乎</option>
+          <option value="微博">微博</option>
+          <option value="通用">通用 / 不限</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>语气</label>
+        <select id="tone">
+          <option value="口语化">口语化</option>
+          <option value="正式">正式</option>
+          <option value="精简">精简凝练</option>
+          <option value="活泼">活泼</option>
+          <option value="专业">专业严谨</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>模型</label>
+        <select id="model">
+          <option value="deepseek-chat" selected>推荐（deepseek-chat，快）</option>
+          <option value="deepseek-reasoner">更强（deepseek-reasoner，慢且贵）</option>
+        </select>
+      </div>
+    </div>
+    <div class="btnrow">
+      <button class="primary" id="run">开始改写</button>
+      <span class="status" id="status"></span>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="card">
+    <div class="outhead">
+      <label style="margin:0">改写结果</label>
+      <div>
+        <span class="count" id="count"></span>
+        <button class="copy" id="copy" type="button" style="margin-left:10px">复制</button>
+      </div>
+    </div>
+    <div class="out" id="out"></div>
+  </div>
+
+  <footer>内容改写助手 · 你的 Key 只存本地、后端不留存 · 仅用于改写自己的原创内容</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const els = {
+  key:$('key'), src:$('src'), platform:$('platform'), tone:$('tone'),
+  model:$('model'), run:$('run'), status:$('status'), out:$('out'),
+  count:$('count'), copy:$('copy'), toggleKey:$('toggleKey'), srcCount:$('srcCount')
+};
+
+// ---- 记住设置（存本地，方便下次用） ----
+const store = {
+  load(){
+    els.key.value = localStorage.getItem('ds_key') || '';
+    els.platform.value = localStorage.getItem('ds_platform') || '公众号';
+    els.tone.value = localStorage.getItem('ds_tone') || '口语化';
+    els.model.value = localStorage.getItem('ds_model') || 'deepseek-chat';
+  },
+  save(){
+    localStorage.setItem('ds_key', els.key.value.trim());
+    localStorage.setItem('ds_platform', els.platform.value);
+    localStorage.setItem('ds_tone', els.tone.value);
+    localStorage.setItem('ds_model', els.model.value);
+  }
+};
+store.load();
+['key','platform','tone','model'].forEach(k=>els[k].addEventListener('change',store.save));
+
+// 原稿字数实时统计
+function updateSrcCount(){
+  const len = els.src.value.trim().length;
+  els.srcCount.textContent = len ? `${len} 字` : '';
+}
+els.src.addEventListener('input', updateSrcCount);
+updateSrcCount();
+
+els.toggleKey.onclick = ()=>{
+  const showing = els.key.type === 'text';
+  els.key.type = showing ? 'password' : 'text';
+  els.toggleKey.textContent = showing ? '显示' : '隐藏';
+};
+
+// ---- 调用自己的后端（同源，无跨域），后端再转发给 DeepSeek，流式返回 ----
+let isRunning = false; // 防止重复点击
+async function rewrite(){
+  if(isRunning) return; // 双保险：即使按钮没禁用也不重复执行
+  const key = els.key.value.trim();
+  const src = els.src.value.trim();
+  if(!key){ setStatus('请先填入你的 DeepSeek API Key', 'err'); els.key.focus(); return; }
+  if(!src){ setStatus('请先粘贴要改写的原稿', 'err'); els.src.focus(); return; }
+  store.save();
+
+  isRunning = true;
+  els.run.disabled = true;
+  els.out.textContent = '';
+  els.out.classList.add('cursor');
+  setStatus('① 正在分析原稿…');
+  let stageTimer = setTimeout(()=>setStatus('② 正在改写…'), 1500);
+
+  try{
+    const res = await fetch('/api/rewrite', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body: JSON.stringify({
+        key, src,
+        platform: els.platform.value,
+        tone: els.tone.value,
+        model: els.model.value
+      })
+    });
+
+    if(!res.ok){
+      clearTimeout(stageTimer);
+      let msg = `请求失败（HTTP ${res.status}）`;
+      try{ const e = await res.json(); if(e.error) msg = e.error + (e.detail ? '：' + e.detail : ''); }catch(_){}
+      if(res.status === 401) msg = 'DeepSeek Key 无效，请检查后重填。';
+      if(res.status === 402) msg = '账户余额不足，请去 DeepSeek 充值。';
+      if(res.status === 429) msg = '请求太频繁（429），稍等再试。';
+      throw new Error(msg);
+    }
+
+    clearTimeout(stageTimer);
+    setStatus('③ 正在生成成稿…');
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '', full = '';
+
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buf += decoder.decode(value, {stream:true});
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for(const line of lines){
+        const t = line.trim();
+        if(!t.startsWith('data:')) continue;
+        const data = t.slice(5).trim();
+        if(data === '[DONE]') continue;
+        try{
+          const evt = JSON.parse(data);
+          const delta = evt.choices && evt.choices[0] && evt.choices[0].delta;
+          if(delta && delta.content){
+            full += delta.content;
+            els.out.textContent = full;
+            updateCount(full);
+          }
+        }catch(_){ /* 不完整的 JSON 片段，跳过 */ }
+      }
+    }
+
+    els.out.classList.remove('cursor');
+    setStatus(full ? '改写完成 ✓' : '没有生成内容，请重试', full ? 'done' : 'err');
+  }catch(err){
+    els.out.classList.remove('cursor');
+    let m = err.message || String(err);
+    if(/Failed to fetch|NetworkError/i.test(m)) m = '网络请求失败：检查网络，或确认后端已部署。';
+    setStatus(m, 'err');
+  }finally{
+    els.run.disabled = false;
+    isRunning = false;
+  }
+}
+
+function setStatus(t, cls){
+  els.status.textContent = t;
+  els.status.className = 'status' + (cls ? ' ' + cls : '');
+}
+function updateCount(t){ els.count.textContent = t ? `${t.length} 字` : ''; }
+
+els.run.onclick = rewrite;
+els.copy.onclick = async ()=>{
+  const t = els.out.textContent;
+  if(!t){ setStatus('还没有可复制的内容', 'err'); return; }
+  try{
+    await navigator.clipboard.writeText(t);
+    const orig = els.copy.textContent;
+    els.copy.textContent='✓ 已复制';
+    els.copy.style.background='var(--ok)';
+    els.copy.style.color='#fff';
+    els.copy.style.borderColor='var(--ok)';
+    setTimeout(()=>{
+      els.copy.textContent=orig;
+      els.copy.style.background='';
+      els.copy.style.color='';
+      els.copy.style.borderColor='';
+    }, 1800);
+  }
+  catch(_){ setStatus('复制失败，请手动选择文本', 'err'); }
+};
+els.src.addEventListener('keydown', e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='Enter') rewrite(); });
+</script>
+</body>
+</html>
